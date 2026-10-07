@@ -1,5 +1,5 @@
 # apcupsd-cgi
-Docker - APC UPS Power Management Web Interface (from nginx:latest, fcgiwrap, apcupsd-cgi)
+Docker - APC UPS Power Management Web Interface (debian:trixie-slim, nginx-light, fcgiwrap, apcupsd-cgi)
 
 # Requirements
 This is the APC UPS Power Management Web Interface, so it is necessary to have an [APC UPS](https://www.apc.com/) that supports monitoring (USB cable or network). 
@@ -18,11 +18,11 @@ sudo nano /etc/apcupsd/apcupsd.conf
 The minimum parameters to be configured in case of USB connection are the following:
 | Parameter | Setting | Notes |
 | :----: | --- | ---|
-| UPSCABLE | usb | define the tyoe of cable connection |
+| UPSCABLE | usb | define the type of cable connection |
 | UPSTYPE | usb | define the type of UPS |
 | DEVICE |  |leave blank for autoconfig usb port| 
 | NETSERVER | on | enable network information server|
-| NISIP | 0.0.0.0 | IP address on wich NIS server will listen for incoming connections|
+| NISIP | 0.0.0.0 | IP address on which NIS server will listen for incoming connections|
 
 Now edit /etc/default/apcupsd
 ```
@@ -44,36 +44,49 @@ apcaccess status
 ```
 
 ## Docker apcupsd-cgi
-The docker image is Debian buster based, with nginx-light as web server, fcgiwrap as cgi server and obviously apcupsd-cgi. 
+The image is based on Debian trixie (slim), with nginx-light as web server, fcgiwrap as CGI server (running as `www-data`) and apcupsd-cgi.
 
-Apcupsd-cgi is configured to search and connect apcupsd daemon in the host machine IP on standard port 3551. Nginx is configured to conncet with fcgiwrap (CGI server) and to serve multimon.cgi directly on port 80. 
-As explained the container exposes port 80, if as I think port 80 on your host is already busy, redirect it to a free port. I use port 4321. 
+By default apcupsd-cgi connects to the apcupsd daemon on the docker host (the container's default gateway) on the standard port 3551,
+so apcupsd on the host must listen on the docker interface too (`NISIP 0.0.0.0`). Opening `/` redirects to `multimon.cgi`.
+The container exposes port 80; port 80 on the host is probably already busy, so map it to a free port (I use 4321).
 
-To run docker container:
+To run the container:
 ```
-docker run -d -p 4321:80 -restart=unless-stopped --name apcupsd-cgi zedred/apcupsd-cgi
+docker run -d -p 4321:80 --restart=unless-stopped --name apcupsd-cgi zedred/apcupsd-cgi
 ```
-If you use Docker compose
+With Docker Compose (see `docker-compose.yml` in this repository):
 ```
-version: "2.1"
 services:
   apcupsd-cgi:
-      image: zedred/apcupsd-cgi
-      container_name: apcupsd-cgi
-      restart: unless-stopped
-      ports:
-        - 4321:80
+    image: zedred/apcupsd-cgi
+    container_name: apcupsd-cgi
+    restart: unless-stopped
+    ports:
+      - 4321:80
 ```
 
-If you want to customize the image, you have to clone the repository on your system:
+### Configuration
+| Variable | Default | Notes |
+| --- | --- | --- |
+| UPS_HOST | docker host (default gateway) | IP/hostname of the machine running apcupsd |
+| UPS_PORT | 3551 | apcupsd NIS port |
+| UPS_NAME | UPS | name shown in the web interface |
+
+To monitor several UPSes mount your own `hosts.conf`, one `MONITOR host[:port] "name"` line each; it takes precedence over the variables:
+```
+docker run -d -p 4321:80 -v ./hosts.conf:/etc/apcupsd/hosts.conf:ro --name apcupsd-cgi zedred/apcupsd-cgi
+```
+
+### Build your own image
 ```
 git clone https://github.com/zedred79/docker-apcupsd-cgi.git
+cd docker-apcupsd-cgi
+docker compose up -d --build     # or ./rebuild.sh
 ```
-edit the files and recreate a new image
-```
-sudo docker build -t yourname/apcupsd-cgi .
-```
-## Docker apcupsd-cgi
-Enter the application at address http://your_host_IP:4321
 
+### Start at boot without a restart policy
+`docker-apcupsd-cgi.service` is a systemd unit that starts the existing `apcupsd-cgi` container.
+It is not needed if the container uses `--restart=unless-stopped`.
 
+## Usage
+Open http://your_host_IP:4321

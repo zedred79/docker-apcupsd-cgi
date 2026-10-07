@@ -1,0 +1,6 @@
+.git
+README.md
+*.service
+*.sh
+!entrypoint.sh
+docker-compose.yml

@@ -1,0 +1,15 @@
+services:
+  apcupsd-cgi:
+    image: zedred/apcupsd-cgi
+    build: .
+    container_name: apcupsd-cgi
+    restart: unless-stopped
+    ports:
+      - 4321:80
+    # environment:
+    #   UPS_HOST: 192.168.1.10   # default: the docker host
+    #   UPS_PORT: 3551
+    #   UPS_NAME: "My UPS"
+    # More UPSes: mount your own hosts.conf (one "MONITOR host[:port] "name"" line each)
+    # volumes:
+    #   - ./hosts.conf:/etc/apcupsd/hosts.conf:ro
