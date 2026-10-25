@@ -2,6 +2,7 @@
 FROM debian:trixie-slim
 
 RUN apt-get update \
+ && apt-get upgrade -y \
  && apt-get install -y --no-install-recommends nginx-light fcgiwrap apcupsd-cgi \
  && rm -rf /var/lib/apt/lists/* \
  && rm -f /etc/apcupsd/hosts.conf \
