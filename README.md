@@ -1,4 +1,6 @@
 # apcupsd-cgi
+[![Docker publish](https://github.com/zedred79/docker-apcupsd-cgi/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/zedred79/docker-apcupsd-cgi/actions/workflows/docker-publish.yml)
+
 Docker - APC UPS Power Management Web Interface (debian:trixie-slim, nginx-light, fcgiwrap, apcupsd-cgi)
 
 ## Requirements
@@ -56,6 +58,7 @@ so apcupsd on the host must listen on the docker interface too (`NISIP 0.0.0.0`)
 The container exposes port 80; port 80 on the host is probably already busy, so map it to a free port (I use 4321).
 
 Image tags on Docker Hub: `latest` and `3.14.14-trixie` (apcupsd version and Debian release). The image is built for amd64.
+The image is rebuilt and pushed automatically (see [Automatic builds](#automatic-builds)), so `docker compose pull && docker compose up -d` picks up the latest Debian security updates.
 
 To run the container:
 ```
@@ -89,6 +92,19 @@ docker run -d -p 4321:80 -v "$PWD/hosts.conf":/etc/apcupsd/hosts.conf:ro --name 
 git clone https://github.com/zedred79/docker-apcupsd-cgi.git
 cd docker-apcupsd-cgi
 docker compose up -d --build     # or ./rebuild.sh
+```
+
+### Automatic builds
+The GitHub Action [`.github/workflows/docker-publish.yml`](.github/workflows/docker-publish.yml) builds the image from scratch (fresh `debian:trixie-slim`, no cache, `apt-get upgrade`),
+runs a smoke test (`multimon.cgi` must answer) and pushes the tags `latest` and `<apcupsd version>-trixie` to Docker Hub. It runs:
+- on every push to `master` (changes to the README, the systemd unit and `rebuild.sh` only are ignored);
+- every Monday at 04:17 UTC, to pick up Debian security updates;
+- on demand: `gh workflow run docker-publish.yml` or *Actions → Docker publish → Run workflow*.
+
+In a fork set the repository secrets `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` (a Docker Hub access token with Read & Write permission) and change `IMAGE` in the workflow:
+```
+gh secret set DOCKERHUB_USERNAME --body your_dockerhub_user
+gh secret set DOCKERHUB_TOKEN    # paste the token when asked
 ```
 
 ### Start at boot without a restart policy
